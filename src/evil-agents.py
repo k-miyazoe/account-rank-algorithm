@@ -9,6 +9,7 @@ def create_agents_graph(node):
     G.add_nodes_from(agents)
 
     # すべてのエージェントをつなぐ
+    #ここを変更することで、エージェント同士のつながりを変更できる
     for i in range(1, node+1):
         for j in range(1, node+1):
             if i != j:
@@ -46,8 +47,6 @@ def draw_graph(graph, agents, pagerank):
     pos = nx.spring_layout(graph)
     pagerank = pagerank
     plt.figure(figsize=(10, 10))
-    # nx.draw_networkx_nodes(graph, pos, node_color=list(
-    #     pagerank.values()), cmap=plt.cm.Blues)
     nx.draw_networkx_nodes(graph, pos, node_size=[
                            5000*v for v in pagerank.values()])
     nx.draw_networkx_edges(graph, pos)

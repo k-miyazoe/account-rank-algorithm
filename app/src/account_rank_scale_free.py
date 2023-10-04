@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import sys
 import datetime
+import numpy as np
 
 def create_scale_free_graph(node):
     agents = [('エージェント{}'.format(i)) for i in range(1, node+1)]
@@ -13,16 +14,27 @@ def create_scale_free_graph(node):
     return G
 
 def set_agents_score(node):
-    random_agents = {'エージェント{}'.format(i): 1 for i in range(1, node+1)}
-    random_agents['評価の低いエージェント'] = random.uniform(0, 0.2)
+    random_agents = {'エージェント{}'.format(i): random.randint(1, 10) for i in range(1, node+1)}
+    #random_agents['評価の低いエージェント'] = random.uniform(0, 0.2)
+    random_agents['評価の低いエージェント'] = 0.1
+    
     return random_agents
 
 def calculate_pagerank(graph, agents):
     return nx.pagerank(graph, alpha=0.85, personalization=agents)
 
+# def display_agent_scores(scores):
+#     for agent, score in scores.items():
+#         print(f'{agent} の評価スコア: {score}')
+
+def write_agent_scores_to_file(scores, filename):
+    with open(filename, 'w') as file:
+        for agent, score in scores.items():
+            file.write(f'{agent} の評価スコア: {score}\n')
+
 def display_agent_scores(scores):
     for agent, score in scores.items():
-        print(f'{agent} の評価スコア: {score}')
+        write_agent_scores_to_file(scores, 'scores.txt')
 
 def save_graph_image():
     now = datetime.datetime.now()

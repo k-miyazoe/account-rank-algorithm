@@ -4,5 +4,4 @@ services:
     build: ./app
     volumes:
       - ./app/src:/work/
-      - ./app/output:/work/output/
     tty: true

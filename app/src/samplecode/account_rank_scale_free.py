@@ -5,27 +5,30 @@ import sys
 import datetime
 import numpy as np
 
+
 def create_scale_free_graph(node):
-    agents = [('エージェント{}'.format(i)) for i in range(1, node+1)]
-    low_score_agent = '評価の低いエージェント'
-    agents.append(low_score_agent)
-    G = nx.scale_free_graph(node+1, alpha=0.41)
+    # 各エージェントの割合を設定
+    agent_ratios = [0.9, 0.07, 0.03]
+    # 各エージェントの数を計算
+    total_agents = node
+    agent_counts = [int(total_agents * ratio) for ratio in agent_ratios]
+    # エージェントリストを生成
+    agents = []
+    for i, count in enumerate(agent_counts):
+        agents.extend(['エージェント{}'.format(i+1)] * count)
+    random.shuffle(agents)
+    G = nx.scale_free_graph(node, alpha=0.41)
     G.add_nodes_from(agents)
     return G
 
 def set_agents_score(node):
-    random_agents = {'エージェント{}'.format(i): random.randint(1, 10) for i in range(1, node+1)}
+    random_agents = {'エージェント{}'.format(i): random.randint(1, 10) for i in range(1, node)}
     #random_agents['評価の低いエージェント'] = random.uniform(0, 0.2)
     random_agents['評価の低いエージェント'] = 0.1
-    
     return random_agents
 
 def calculate_pagerank(graph, agents):
     return nx.pagerank(graph, alpha=0.85, personalization=agents)
-
-# def display_agent_scores(scores):
-#     for agent, score in scores.items():
-#         print(f'{agent} の評価スコア: {score}')
 
 def write_agent_scores_to_file(scores, filename):
     with open(filename, 'w') as file:

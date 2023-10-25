@@ -8,13 +8,13 @@ def create_record_email_file():
     with open('./output_email/' + now + '.txt', mode='w') as f:
         f.write('')
 
-def create_agents_graph(num_agents):
+def create_agents_graph(num_agents,a_rate=0.9,b_rate=0.07,c_rate=0.03):
     G = nx.Graph()
-    for i in range(int(num_agents * 0.9)):
+    for i in range(int(num_agents * a_rate)):
         G.add_node(f'A{i + 1}', agent_type='A', msc=1000, commission=0)
-    for i in range(int(num_agents * 0.07)):
+    for i in range(int(num_agents * b_rate)):
         G.add_node(f'B{i + 1}', agent_type='B', msc=1000, commission=0)
-    for i in range(int(num_agents * 0.03)):
+    for i in range(int(num_agents * c_rate)):
         G.add_node(f'C{i + 1}', agent_type='C', msc=1000, commission=0)
     return G
 
@@ -43,7 +43,7 @@ def record_email_sending_info(simulation_type,a_email_count,b_email_count,c_emai
         f.write("agentB:" + str(b_email_count) + '\n')
         f.write("agentC:" + str(c_email_count) + '\n')
 
-def add_a_relations(graph, num_agents):
+def add_a_relations(graph, num_agents,email_send_probability=0.2,refund_probability=0.1):
     target_a_relations = int(0.05 * num_agents)
     a_nodes = [node for node in graph.nodes if graph.nodes[node]
                ['agent_type'] == 'A']
@@ -53,7 +53,7 @@ def add_a_relations(graph, num_agents):
         return_edge_add_probabili = random.random()
         for j in range(target_a_relations):
             # 80%の確率でエッジ追加
-            if a_ege_add_probability > 0.2:
+            if a_ege_add_probability > email_send_probability:
                 #追加コード
                 send_msc_flag,graph = fee_payment(graph, a_nodes[i], graph.nodes[a_nodes[i]]['commission'])
                 if send_msc_flag:
@@ -62,12 +62,12 @@ def add_a_relations(graph, num_agents):
                     graph.add_edge(a_nodes[i], random_a_node)
                     graph = send_msc(a_nodes[i], random_a_node, graph)
                     # 90%の確率で双方向にエッジを追加
-                    if return_edge_add_probabili > 0.1:
+                    if return_edge_add_probabili > refund_probability:
                         graph = send_msc(random_a_node, a_nodes[i], graph)
                         graph.add_edge(random_a_node, a_nodes[i])
     return graph, a_email_count
 
-def add_b_relations(graph, num_agents):
+def add_b_relations(graph, num_agents,email_send_probability=0.1,refund_probability=0.3):
     target_b_relations = int(0.8 * num_agents)
     a_nodes = [node for node in graph.nodes if graph.nodes[node]
                ['agent_type'] == 'A']
@@ -78,19 +78,19 @@ def add_b_relations(graph, num_agents):
         b_ege_add_probability = random.random()
         return_edge_add_probabili = random.random()
         for j in range(target_b_relations):
-            if b_ege_add_probability > 0.1:
+            if b_ege_add_probability > email_send_probability:
                 send_msc_flag,graph = fee_payment(graph, b_nodes[i], graph.nodes[b_nodes[i]]['commission'])
                 if send_msc_flag:
                     b_email_count += 1
                     random_a_node = a_nodes[random.randint(0, len(a_nodes) - 1)]
                     graph = send_msc(b_nodes[i], random_a_node, graph)
                     graph.add_edge(b_nodes[i], random_a_node)
-                    if return_edge_add_probabili > 0.3:
+                    if return_edge_add_probabili > refund_probability:
                         graph = send_msc(random_a_node, b_nodes[i], graph)
                         graph.add_edge(random_a_node, b_nodes[i])
     return graph, b_email_count
 
-def add_c_relations(graph, num_agents):
+def add_c_relations(graph, num_agents,email_send_probability=0.1,refund_probability=0.1):
     target_c_relations = int(0.7 * num_agents)
     a_nodes = [node for node in graph.nodes if graph.nodes[node]
                ['agent_type'] == 'A']
@@ -101,14 +101,14 @@ def add_c_relations(graph, num_agents):
         c_ege_add_probability = random.random()
         return_edge_add_probabili = random.random()
         for j in range(target_c_relations):
-            if c_ege_add_probability > 0.1:
+            if c_ege_add_probability > email_send_probability:
                 send_msc_flag,graph = fee_payment(graph, c_nodes[i], graph.nodes[c_nodes[i]]['commission'])
                 if send_msc_flag:
                     c_email_count += 1
                     random_a_node = a_nodes[random.randint(0, len(a_nodes) - 1)]
                     graph = send_msc(c_nodes[i], random_a_node, graph)
                     graph.add_edge(c_nodes[i], random_a_node)
-                    if return_edge_add_probabili < 0.1:
+                    if return_edge_add_probabili < refund_probability:
                         graph = send_msc(random_a_node, c_nodes[i], graph)
                         graph.add_edge(random_a_node, c_nodes[i])
     return graph,c_email_count
@@ -148,7 +148,7 @@ def save_graph_image(agents_graph, account_rank, simulation_type):
     colors = set_node_color(agents_graph)
     nx.draw_networkx_nodes(agents_graph, pos, node_color=colors, node_size=[
                            100*v for v in account_rank.values()])
-    nx.draw_networkx_edges(agents_graph, pos, width=1.0)
+    nx.draw_networkx_edges(agents_graph, pos, width=0.1)
     now = datetime.datetime.now()
     graph_image_file = './output_graph/' + \
         now.strftime('%Y%m%d_%H%M%S') + simulation_type +'.png'
@@ -179,7 +179,7 @@ def commission_settings_for_each_agent(graph,account_rank):
         new_graph.nodes[key]['commission'] = calculating_email_remittance_fees(len(graph.nodes),value)
     return new_graph
 
-def first_simulation(num_agents=1000):
+def first_simulation(num_agents=100):
     agents_graph = create_agents_graph(num_agents)
     agents_graph,a_email_count = add_a_relations(agents_graph, num_agents)
     agents_graph,b_email_count = add_b_relations(agents_graph, num_agents)
@@ -193,7 +193,7 @@ def first_simulation(num_agents=1000):
     save_graph_image(agents_graph, account_rank, simulation_type='first')
     return agents_graph,account_rank
 
-def second_simulation(previous_agents_graph,account_rank,num_agents=1000):
+def second_simulation(previous_agents_graph,account_rank,num_agents=100):
     commission_agents_graph = commission_settings_for_each_agent(previous_agents_graph,account_rank)
     #エッジを追加する前に、手数料や送金料を支払う処理を行う
     commission_agents_graph,a_email_count = add_a_relations(commission_agents_graph, num_agents)
@@ -204,9 +204,9 @@ def second_simulation(previous_agents_graph,account_rank,num_agents=1000):
     display_graph_info(commission_agents_graph)
     save_graph_image(commission_agents_graph, account_rank, simulation_type='second')
 
-def main():
-    previous_agents_graph,account_rank = first_simulation()
-    second_simulation(previous_agents_graph=previous_agents_graph,account_rank=account_rank)
+def main(num_agents):
+    previous_agents_graph,account_rank = first_simulation(num_agents=num_agents)
+    second_simulation(previous_agents_graph=previous_agents_graph,account_rank=account_rank,num_agents=num_agents)
 
 if __name__ == "__main__":
     main()

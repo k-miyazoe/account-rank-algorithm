@@ -9,11 +9,11 @@ import os
 def create_agents_graph(num_agents, a_rate=0.9, b_rate=0.09, c_rate=0.01):
     G = nx.Graph()
     for i in range(int(num_agents * a_rate)):
-        G.add_node(f'A{i + 1}', agent_type='A', msc=1000, commission=0)
+        G.add_node(f'A{i + 1}', agent_type='A', msc=500, commission=0)
     for i in range(int(num_agents * b_rate)):
-        G.add_node(f'B{i + 1}', agent_type='B', msc=1000, commission=0)
+        G.add_node(f'B{i + 1}', agent_type='B', msc=500, commission=0)
     for i in range(int(num_agents * c_rate)):
-        G.add_node(f'C{i + 1}', agent_type='C', msc=1000, commission=0)
+        G.add_node(f'C{i + 1}', agent_type='C', msc=500, commission=0)
     return G
 
 
@@ -24,87 +24,51 @@ def set_node_color(graph):
     return node_colors
 
 
-def send_msc(node_from, node_to, graph):
-    graph.nodes[node_from]['msc'] = graph.nodes[node_from]['msc'] - 1
-    graph.nodes[node_to]['msc'] = graph.nodes[node_to]['msc'] + 1
+def send_msc(node_from, node_to, graph, commission=0):
+    graph.nodes[node_from]['msc'] = graph.nodes[node_from]['msc'] - (1 + commission)
+    graph.nodes[node_to]['msc'] = graph.nodes[node_to]['msc'] + (1 + commission)
     return graph
 
 
 def fee_payment(graph, node_from, commission=0):
-    if graph.nodes[node_from]['msc'] < 0:
+    if graph.nodes[node_from]['msc'] < commission + 1:
         return False, graph
     else:
         graph.nodes[node_from]['msc'] = graph.nodes[node_from]['msc'] - commission
         return True, graph
 
 
-def add_a_relations(graph, a_agents, email_send_probability, refund_probability):
-    target_a_relations = int(0.05 * a_agents)
-    a_nodes = [node for node in graph.nodes if graph.nodes[node]
-               ['agent_type'] == 'A']
-    a_email_count = 0
-    for i in range(len(a_nodes)):
-        for j in range(target_a_relations):
+def add_relations(graph, agent_type, a_agents, email_send_probability, refund_probability):
+    target_relations = {
+        'A': 0.05,
+        'B': 0.2,
+        'C': 0.8
+    }
+    
+    a_nodes = [node for node in graph.nodes if graph.nodes[node]['agent_type'] == 'A']
+    agent_nodes = [node for node in graph.nodes if graph.nodes[node]['agent_type'] == agent_type]
+    
+    email_count = 0
+    
+    for i in range(len(agent_nodes)):
+        target_count = int(target_relations[agent_type] * a_agents)
+        
+        for j in range(target_count):
             if random.random() < email_send_probability:
-                random_a_node = a_nodes[random.randint(0, len(a_nodes) - 1)]
-                graph.add_edge(a_nodes[i], random_a_node)
-                graph = send_msc(a_nodes[i], random_a_node, graph)
-                a_email_count += 1
-                if random.random() < refund_probability:
-                    graph = send_msc(random_a_node, a_nodes[i], graph)
-                    graph.add_edge(random_a_node, a_nodes[i])
-    ave_a_email_count = a_email_count / len(a_nodes)
-    return graph, ave_a_email_count
-
-
-def add_b_relations(graph, a_agents, email_send_probability=0.9, refund_probability=0.7):
-    target_b_relations = int(0.2 * a_agents)
-    a_nodes = [node for node in graph.nodes if graph.nodes[node]
-               ['agent_type'] == 'A']
-    b_nodes = [node for node in graph.nodes if graph.nodes[node]
-               ['agent_type'] == 'B']
-    b_email_count = 0
-    for i in range(len(b_nodes)):
-        for j in range(target_b_relations):
-            if random.random() < email_send_probability:
-                send_msc_flag, graph = fee_payment(
-                    graph, b_nodes[i], graph.nodes[b_nodes[i]]['commission'])
+                send_msc_flag, graph = fee_payment(graph, agent_nodes[i], graph.nodes[agent_nodes[i]]['commission'])
+                
                 if send_msc_flag:
-                    random_a_node = a_nodes[random.randint(
-                        0, len(a_nodes) - 1)]
-                    graph = send_msc(b_nodes[i], random_a_node, graph)
-                    graph.add_edge(b_nodes[i], random_a_node)
-                    b_email_count += 1
+                    random_a_node = a_nodes[random.randint(0, len(a_nodes) - 1)]
+                    graph = send_msc(agent_nodes[i], random_a_node, graph, graph.nodes[agent_nodes[i]]['commission'])
+                    graph.add_edge(agent_nodes[i], random_a_node)
+                    email_count += 1
+                    
                     if random.random() < refund_probability:
-                        graph = send_msc(random_a_node, b_nodes[i], graph)
-                        graph.add_edge(random_a_node, b_nodes[i])
-    ave_b_email_count = b_email_count / len(b_nodes)
-    return graph, ave_b_email_count
-
-
-def add_c_relations(graph, a_agents, email_send_probability=0.9, refund_probability=0.1):
-    target_c_relations = int(0.8 * a_agents)
-    a_nodes = [node for node in graph.nodes if graph.nodes[node]
-               ['agent_type'] == 'A']
-    c_nodes = [node for node in graph.nodes if graph.nodes[node]
-               ['agent_type'] == 'C']
-    c_email_count = 0
-    for i in range(len(c_nodes)):
-        for j in range(target_c_relations):
-            if random.random() < email_send_probability:
-                send_msc_flag, graph = fee_payment(
-                    graph, c_nodes[i], graph.nodes[c_nodes[i]]['commission'])
-                if send_msc_flag:
-                    random_a_node = a_nodes[random.randint(
-                        0, len(a_nodes) - 1)]
-                    graph = send_msc(c_nodes[i], random_a_node, graph)
-                    graph.add_edge(c_nodes[i], random_a_node)
-                    c_email_count += 1
-                    if random.random() < refund_probability:
-                        graph = send_msc(random_a_node, c_nodes[i], graph)
-                        graph.add_edge(random_a_node, c_nodes[i])
-    ave_c_email_count = c_email_count / len(c_nodes)
-    return graph, ave_c_email_count
+                        graph = send_msc(random_a_node, agent_nodes[i], graph, graph.nodes[agent_nodes[i]]['commission'])
+                        graph.add_edge(random_a_node, agent_nodes[i])
+    
+    ave_email_count = int(email_count / len(agent_nodes))
+    return graph, ave_email_count
 
 
 def display_graph_info(graph):
@@ -146,9 +110,10 @@ def save_graph_image(agents_graph, account_rank, output_folder_path, simulation_
     # 追加 メモリを大量に消費するので閉じる
     plt.close()
 
-
-def calculating_email_remittance_fees(num_agents, rank):
-    return int(1 / (1 / rank))
+#改良の余地あり
+def calculating_email_remittance_fees(rank, max_fee=10):
+   #return min(max_fee, max(1, max_fee // rank))
+    return int(1/(1/rank))
 
 
 def commission_settings_for_each_agent(graph, account_rank):
@@ -165,8 +130,7 @@ def commission_settings_for_each_agent(graph, account_rank):
         new_graph.add_node(
             key, agent_type=value['agent_type'], msc=value['msc'], commission=value['commission'])
     for key, value in rank_data.items():
-        new_graph.nodes[key]['commission'] = calculating_email_remittance_fees(
-            len(graph.nodes), value)
+        new_graph.nodes[key]['commission'] = calculating_email_remittance_fees(value)
     return new_graph
 
 
@@ -191,12 +155,11 @@ def first_simulation(num_agents, mail_prob_A, mail_prob_B, mail_prob_C, refund_p
     agents_graph = create_agents_graph(
         num_agents, agent_ratio_A, agent_ratio_B, agent_ratio_C)
     a_agents = num_agents * agent_ratio_A
-    agents_graph, ave_a_email_count = add_a_relations(
-        agents_graph, a_agents, mail_prob_A, refund_prob_A)
-    agents_graph, ave_b_email_count = add_b_relations(
-        agents_graph, a_agents, mail_prob_B, refund_prob_B)
-    agents_graph, ave_c_email_count = add_c_relations(
-        agents_graph, a_agents, mail_prob_C, refund_prob_C)
+    
+    agents_graph, ave_a_email_count = add_relations(agents_graph, 'A', a_agents, mail_prob_A, refund_prob_A)
+    agents_graph, ave_b_email_count = add_relations(agents_graph, 'B', a_agents, mail_prob_B, refund_prob_B)
+    agents_graph, ave_c_email_count = add_relations(agents_graph, 'C', a_agents, mail_prob_C, refund_prob_C)
+    
     all_agents_score = set_agents_unified_score(num_agents)
     account_rank = calculate_accountrank(agents_graph, all_agents_score)
 
@@ -208,33 +171,49 @@ def first_simulation(num_agents, mail_prob_A, mail_prob_B, mail_prob_C, refund_p
 
 def second_simulation(previous_agents_graph, account_rank, num_agents, mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C, agent_ratio_A, output_folder_path):
     a_agents = num_agents * agent_ratio_A
+    
+    # アカウントランクあり
     commission_agents_graph = commission_settings_for_each_agent(
         previous_agents_graph, account_rank)
-    commission_agents_graph, ave_a_email_count = add_a_relations(
-        commission_agents_graph, a_agents, mail_prob_A, refund_prob_A)
-    commission_agents_graph, ave_b_email_count = add_b_relations(
-        commission_agents_graph, a_agents, mail_prob_B, refund_prob_B)
-    commission_agents_graph, ave_c_email_count = add_c_relations(
-        commission_agents_graph, a_agents, mail_prob_C, refund_prob_C)
+    
+    commission_agents_graph, ave_a_email_count = add_relations(
+        commission_agents_graph, 'A', a_agents, mail_prob_A, refund_prob_A)
+    commission_agents_graph, ave_b_email_count = add_relations(
+        commission_agents_graph, 'B', a_agents, mail_prob_B, refund_prob_B)
+    commission_agents_graph, ave_c_email_count = add_relations(
+        commission_agents_graph, 'C', a_agents, mail_prob_C, refund_prob_C)
+    # アカウントランクなし
+    no_account_rank_graph = previous_agents_graph
+    no_account_rank_graph, ave_a_email_count_ = add_relations(
+        no_account_rank_graph, 'A', a_agents, mail_prob_A, refund_prob_A)
+    no_account_rank_graph, ave_b_email_count_ = add_relations(
+        no_account_rank_graph, 'B', a_agents, mail_prob_B, refund_prob_B)
+    no_account_rank_graph, ave_c_email_count_ = add_relations(
+        no_account_rank_graph, 'C', a_agents, mail_prob_C, refund_prob_C)
+    
+    
     display_graph_info(commission_agents_graph)
     save_graph_image(commission_agents_graph, account_rank,
                      output_folder_path, simulation_type='second')
-    return ave_a_email_count, ave_b_email_count, ave_c_email_count
+    return commission_agents_graph,ave_a_email_count, ave_b_email_count, ave_c_email_count, ave_a_email_count_, ave_b_email_count_, ave_c_email_count_
 
 
 def main(num_agents, mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C, agent_ratio_A, agent_ratio_B, agent_ratio_C, output_file_name, output_folder_path):
-    # first_ave_a_email_countが使われていないのが気になる
     previous_agents_graph, account_rank, first_ave_a_email_count, first_ave_b_email_count, first_ave_c_email_count = first_simulation(
         num_agents, mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C, agent_ratio_A, agent_ratio_B, agent_ratio_C, output_folder_path)
-    first_sim_a_agents_ave_msc, first_sim_b_agents_ave_msc, first_sim_c_agents_ave_msc = average_msc(
-        previous_agents_graph)
-    second_ave_a_email_count, second_ave_b_email_count, second_ave_c_email_count = second_simulation(
+    
+    second_agents_graph,second_ave_a_email_count, second_ave_b_email_count, second_ave_c_email_count, second_ave_a_email_count_, second_ave_b_email_count_, second_ave_c_email_count_ = second_simulation(
         previous_agents_graph, account_rank, num_agents, mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C, agent_ratio_A, output_folder_path)
-    data = [refund_prob_A, refund_prob_B, refund_prob_C, first_sim_a_agents_ave_msc, first_sim_b_agents_ave_msc,
-            first_sim_c_agents_ave_msc, second_ave_a_email_count, second_ave_b_email_count, second_ave_c_email_count]
+    
+    second_sim_a_agents_ave_msc, second_sim_b_agents_ave_msc, second_sim_c_agents_ave_msc = average_msc(
+        second_agents_graph)
+    
+    simulation_result = [refund_prob_A, refund_prob_B, refund_prob_C, second_sim_a_agents_ave_msc, second_sim_b_agents_ave_msc,
+            second_sim_c_agents_ave_msc, first_ave_a_email_count,first_ave_b_email_count, first_ave_c_email_count,second_ave_a_email_count, second_ave_b_email_count, second_ave_c_email_count, second_ave_a_email_count_, second_ave_b_email_count_, second_ave_c_email_count_]
+    
     with open(output_folder_path + output_file_name, 'a') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(data)
+        writer.writerow(simulation_result)
 
 
 if __name__ == "__main__":

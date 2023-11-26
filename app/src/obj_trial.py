@@ -29,7 +29,6 @@ def main():
     total_combinations = len(parameter_combinations)
     print(f"Total combinations(試行回数): {total_combinations}")
     
-    
     for combination in parameter_combinations:
         csv_folder_index = 1
         csv_index = csv_folder_index
@@ -40,11 +39,15 @@ def main():
         #1回のみ
         simulation.create_agents_graph()
         init_graph, account_rank = simulation.run_init_simulation(mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C)
-    
+        
+        # init Graph with 100 nodes and 0 edges networkx.classes.graph.Graph
+        simulation.set_graph_account_rank(init_graph)
+        simulation.set_graph_normal(init_graph)
+        
         graph_rank = init_graph
         graph_normal = init_graph
         
-        #forで本シミュレーションが収束するまで回す(要検討)
+        #forで本シミュレーションが収束するまで回す(要検討) @high
         for i in range(10):
             graph_rank, ave_a_email_count_a, ave_b_email_count_a, ave_c_email_count_a = simulation.run_simulation_with_account_rank(graph_rank, account_rank, mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C)
             graph_normal, ave_a_email_count_n, ave_b_email_count_n, ave_c_email_count_n = simulation.run_simulation_normal(graph_normal, mail_prob_A, mail_prob_B, mail_prob_C, refund_prob_A, refund_prob_B, refund_prob_C)
@@ -91,7 +94,6 @@ def create_params_file(dir_path, mail_probabilities_A, mail_probabilities_B, mai
             f"- タイプ B エージェント比率: {', '.join(map(str, agent_ratios_B))}\n")
         file.write(
             f"- タイプ C エージェント比率: {', '.join(map(str, agent_ratios_C))}\n")
-    print(f"Output params file name: params.txt")
 
 def create_output_csv(dir_path, csv_index):
     csv_header = ["返金確率A", "返金確率B", "返金確率C", 

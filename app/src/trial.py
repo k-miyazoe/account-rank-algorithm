@@ -6,14 +6,13 @@ import itertools
 
 
 def main():
-    num_agents = 500
+    num_agents = 1000
     mail_probabilities_A = [1]
     mail_probabilities_C = [1]
-    # refund_probabilities_A = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
-    # refund_probabilities_B = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
-    # refund_probabilities_C = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
-    refund_probabilities_A = [0.9]
-    refund_probabilities_C = [0.1]
+    refund_probabilities_A = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
+    refund_probabilities_C = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
+    # refund_probabilities_A = [0.6]
+    # refund_probabilities_C = [0.4]
     agent_ratios_A = [0.99]
     agent_ratios_C = [0.01]
 
@@ -27,16 +26,16 @@ def main():
 
     total_combinations = len(parameter_combinations)
     print(f"Total combinations(試行回数): {total_combinations}")
+    csv_file_name = create_output_csv(output_folder_path)
 
     for combination in parameter_combinations:
-        csv_folder_index = 1
-        csv_index = csv_folder_index
-        csv_file_name = create_output_csv(output_folder_path, csv_index)
+        #csv_folder_index = 1
+        #csv_index = csv_folder_index
+        # csv_file_name = create_output_csv(output_folder_path, csv_index)
 
         mail_prob_A,  mail_prob_C, refund_prob_A, refund_prob_C, agent_ratio_A, agent_ratio_C = combination
-        simulation = Simulation(num_agents, csv_file_name, output_folder_path,
-                                agent_ratio_A, agent_ratio_C)
-        # 1回のみ
+        simulation = Simulation(num_agents, output_folder_path, agent_ratio_A, agent_ratio_C)
+
         simulation.create_agents_graph()
         init_graph, account_rank = simulation.run_init_simulation(
             mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
@@ -61,11 +60,12 @@ def main():
                                  ave_a_email_count_a, ave_c_email_count_a,
                                  ave_a_email_count_n, ave_c_email_count_n]
 
+            #csvファイルを1つにする
             with open(output_folder_path + csv_file_name, 'a') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(simulation_result)
 
-        csv_folder_index += 1
+        #csv_folder_index += 1
 
 
 def create_output_directory():
@@ -94,7 +94,7 @@ def create_params_file(dir_path, mail_probabilities_A, mail_probabilities_C, ref
             f"- タイプ C エージェント比率: {', '.join(map(str, agent_ratios_C))}\n")
 
 
-def create_output_csv(dir_path, csv_index):
+def create_output_csv(dir_path):
     csv_header = ["返金確率A", "返金確率C",
                   "仮想通貨の平均所持量A(rank)", "仮想通貨の平均所持量C(rank)",
                   "仮想通貨の平均所持量A(normal)", "仮想通貨の平均所持量C(normal)",
@@ -102,7 +102,8 @@ def create_output_csv(dir_path, csv_index):
                   "平均メール送信件数A(normal)", "平均メール送信件数C(normal)"]
     execution_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
-    output_file_name = f"output_{execution_time + str(csv_index)}.csv"
+    # output_file_name = f"output_{execution_time + str(csv_index)}.csv"
+    output_file_name = f"output_{execution_time}.csv"
     with open(dir_path + output_file_name, 'w') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(csv_header)
@@ -113,14 +114,18 @@ def create_output_csv(dir_path, csv_index):
 def average_msc(graph):
     ave_A = 0
     ave_C = 0
+    a_nodes = 0
+    c_nodes = 0
     if len(graph.nodes) > 0:
         for key, value in graph.nodes.items():
             if value['agent_type'] == 'A':
                 ave_A += value['msc']
+                a_nodes += 1
             elif value['agent_type'] == 'C':
                 ave_C += value['msc']
-        ave_A = ave_A / len(graph.nodes)
-        ave_C = ave_C / len(graph.nodes)
+                c_nodes += 1
+        ave_A = ave_A / a_nodes
+        ave_C = ave_C / c_nodes
     else:
         print("Error: The length of graph.nodes is zero.")
         pass

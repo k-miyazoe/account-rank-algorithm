@@ -6,6 +6,7 @@ import itertools
 
 
 def main():
+    # 100以下にするとエラーが出る
     num_agents = 1000
     mail_probabilities_A = [1]
     mail_probabilities_C = [1]
@@ -17,7 +18,7 @@ def main():
     agent_ratios_C = [0.01]
 
     output_folder_path = create_output_directory()
-    create_params_file(output_folder_path, mail_probabilities_A, mail_probabilities_C,
+    create_params_file(num_agents, output_folder_path, mail_probabilities_A, mail_probabilities_C,
                        refund_probabilities_A,  refund_probabilities_C, agent_ratios_A, agent_ratios_C)
 
     parameter_combinations = list(itertools.product(mail_probabilities_A, mail_probabilities_C,
@@ -29,12 +30,13 @@ def main():
     csv_file_name = create_output_csv(output_folder_path)
 
     for combination in parameter_combinations:
-        #csv_folder_index = 1
-        #csv_index = csv_folder_index
+        # csv_folder_index = 1
+        # csv_index = csv_folder_index
         # csv_file_name = create_output_csv(output_folder_path, csv_index)
 
         mail_prob_A,  mail_prob_C, refund_prob_A, refund_prob_C, agent_ratio_A, agent_ratio_C = combination
-        simulation = Simulation(num_agents, output_folder_path, agent_ratio_A, agent_ratio_C)
+        simulation = Simulation(
+            num_agents, output_folder_path, agent_ratio_A, agent_ratio_C)
 
         simulation.create_agents_graph()
         init_graph, account_rank = simulation.run_init_simulation(
@@ -60,12 +62,12 @@ def main():
                                  ave_a_email_count_a, ave_c_email_count_a,
                                  ave_a_email_count_n, ave_c_email_count_n]
 
-            #csvファイルを1つにする
+            # csvファイルを1つにする
             with open(output_folder_path + csv_file_name, 'a') as csvfile:
                 writer = csv.writer(csvfile)
                 writer.writerow(simulation_result)
 
-        #csv_folder_index += 1
+        # csv_folder_index += 1
 
 
 def create_output_directory():
@@ -75,8 +77,10 @@ def create_output_directory():
     return folder_path
 
 
-def create_params_file(dir_path, mail_probabilities_A, mail_probabilities_C, refund_probabilities_A, refund_probabilities_C, agent_ratios_A, agent_ratios_C):
+def create_params_file(num_agents, dir_path, mail_probabilities_A, mail_probabilities_C, refund_probabilities_A, refund_probabilities_C, agent_ratios_A, agent_ratios_C):
     with open(dir_path + "params.txt", "w") as file:
+        num_agents_text = "エージェントの数："+str(num_agents)+"\n"
+        file.write(num_agents_text)
         file.write("メール確率:\n")
         file.write(
             f"- タイプ A のメール確率: {', '.join(map(str, mail_probabilities_A))}\n")

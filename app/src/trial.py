@@ -28,19 +28,18 @@ def main():
     total_combinations = len(parameter_combinations)
     print(f"Total combinations(試行回数): {total_combinations}")
     csv_file_name = create_output_csv(output_folder_path)
+    ten_days_simulation = 10
+    now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
+    accont_rank_csv = now + "account_rank.csv"
 
     for combination in parameter_combinations:
-        # csv_folder_index = 1
-        # csv_index = csv_folder_index
-        # csv_file_name = create_output_csv(output_folder_path, csv_index)
-
         mail_prob_A,  mail_prob_C, refund_prob_A, refund_prob_C, agent_ratio_A, agent_ratio_C = combination
         simulation = Simulation(
             num_agents, output_folder_path, agent_ratio_A, agent_ratio_C)
 
         simulation.create_agents_graph()
         init_graph, account_rank = simulation.run_init_simulation(
-            mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
+            mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C, accont_rank_csv)
 
         simulation.set_graph_account_rank(init_graph)
         simulation.set_graph_normal(init_graph)
@@ -48,26 +47,38 @@ def main():
         graph_rank = init_graph
         graph_normal = init_graph
 
-        # forで本シミュレーションが収束するまで回す(要検討) @high
-        for i in range(10):
-            graph_rank, ave_a_email_count_a, ave_c_email_count_a = simulation.run_simulation_with_account_rank(
-                graph_rank, account_rank, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
-            graph_normal, ave_a_email_count_n, ave_c_email_count_n = simulation.run_simulation_normal(
-                graph_normal, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
-            a_msc_rank, c_msc_rank = average_msc(graph_rank)
-            a_msc, c_msc = average_msc(graph_normal)
-            simulation_result = [refund_prob_A,  refund_prob_C,
-                                 a_msc_rank, c_msc_rank,
-                                 a_msc, c_msc,
-                                 ave_a_email_count_a, ave_c_email_count_a,
-                                 ave_a_email_count_n, ave_c_email_count_n]
+        ten_days_simulation_result = [refund_prob_A,refund_prob_C,0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        for j in range(1):
+            graph_rank = init_graph
+            graph_normal = init_graph
+            sum_confi_msc_rank = 0
+            sum_confi_msc_normal = 0
+            
+            for i in range(ten_days_simulation):
+                graph_rank, ave_a_email_count_a, ave_c_email_count_a, sum_confiscation_msc_rank_c = simulation.run_simulation_with_account_rank(
+                    graph_rank, account_rank, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
+                
+                graph_normal, ave_a_email_count_n, ave_c_email_count_n, sum_confiscation_msc_normal_c = simulation.run_simulation_normal(
+                    graph_normal, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
+                
+                a_msc_rank, c_msc_rank = average_msc(graph_rank)
+                a_msc, c_msc = average_msc(graph_normal)
+                
+                sum_confi_msc_rank += sum_confiscation_msc_rank_c
+                sum_confi_msc_normal += sum_confiscation_msc_normal_c
+                #noramlの没収金額が異様に大きい問題
+                #print("debug noraml", sum_confi_msc_normal)
+            
+                ten_days_simulation_result = add_simulation_result(ten_days_simulation_result, a_msc_rank, c_msc_rank,a_msc, 
+                                                                c_msc,ave_a_email_count_a, ave_c_email_count_a,
+                                                                ave_a_email_count_n, ave_c_email_count_n,
+                                                                sum_confi_msc_rank, sum_confi_msc_normal)
+            
+        ave_simulation_result = divide_simulation_result(ten_days_simulation_result, 10)
 
-            # csvファイルを1つにする
-            with open(output_folder_path + csv_file_name, 'a') as csvfile:
-                writer = csv.writer(csvfile)
-                writer.writerow(simulation_result)
-
-        # csv_folder_index += 1
+        with open(output_folder_path + csv_file_name, 'a') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(ave_simulation_result)
 
 
 def create_output_directory():
@@ -103,10 +114,10 @@ def create_output_csv(dir_path):
                   "仮想通貨の平均所持量A(rank)", "仮想通貨の平均所持量C(rank)",
                   "仮想通貨の平均所持量A(normal)", "仮想通貨の平均所持量C(normal)",
                   "平均メール送信件数A(rank)", "平均メール送信件数C(rank)",
-                  "平均メール送信件数A(normal)", "平均メール送信件数C(normal)"]
+                  "平均メール送信件数A(normal)", "平均メール送信件数C(normal)",
+                  "没収されたCのmscの合計(rank)", "没収されたCのmscの合計(normal)"]
     execution_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
-    # output_file_name = f"output_{execution_time + str(csv_index)}.csv"
     output_file_name = f"output_{execution_time}.csv"
     with open(dir_path + output_file_name, 'w') as csvfile:
         writer = csv.writer(csvfile)
@@ -136,6 +147,33 @@ def average_msc(graph):
 
     return ave_A, ave_C
 
+
+def add_simulation_result(pre_result, a_msc_rank, c_msc_rank,a_msc, c_msc,ave_a_email_count_a, ave_c_email_count_a,ave_a_email_count_n, ave_c_email_count_n, sum_confiscation_msc_rank_c, sum_confiscation_msc_normal_c):
+    pre_result[2] = pre_result[2] + a_msc_rank
+    pre_result[3] = pre_result[3] + c_msc_rank
+    pre_result[4] = pre_result[4] + a_msc
+    pre_result[5] = pre_result[5] + c_msc
+    pre_result[6] = pre_result[6] + ave_a_email_count_a
+    pre_result[7] = pre_result[7] + ave_c_email_count_a
+    pre_result[8] = pre_result[8] + ave_a_email_count_n
+    pre_result[9] = pre_result[9] + ave_c_email_count_n
+    pre_result[10] = pre_result[10] + sum_confiscation_msc_rank_c
+    pre_result[11] = pre_result[11] + sum_confiscation_msc_normal_c
+    return pre_result
+
+
+def divide_simulation_result(result, num):  
+    result[2] = round(result[2] / num, 2)
+    result[3] = round(result[3] / num, 2)
+    result[4] = round(result[4] / num, 2)
+    result[5] = round(result[5] / num, 2)
+    result[6] = result[6] / num
+    result[7] = result[7] / num
+    result[8] = result[8] / num
+    result[9] = result[9] / num
+    result[10] = result[10] / num
+    result[11] = result[11] / num
+    return result
 
 if __name__ == "__main__":
     main()

@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import random
 import datetime
 import os
+import csv
 
 
 class Agent:
@@ -63,7 +64,6 @@ class Simulation:
         self.a_agents = int(self.num_agents * a_rate)
         self.c_agents = int(self.num_agents * c_rate)
 
-    # first simulationのみ ok
     def create_agents_graph(self):
         for i in range(self.a_agents):
             agent = Agent(f'A{i + 1}', 'A', msc=1000, commission=0)
@@ -116,6 +116,7 @@ class Simulation:
         agent_nodes = [
             node for node in self.agents_graph_account_rank.graph.nodes if self.agents_graph_account_rank.graph.nodes[node]['agent_type'] == agent_type]
         email_count = 0
+        sum_confiscation_msc = 0
         for i in range(len(agent_nodes)):
             target_count = self.number_of_emails_sent(agent_type)
             for j in range(target_count):
@@ -135,8 +136,11 @@ class Simulation:
                                 random_a_node, agent_nodes[i], self.agents_graph_account_rank.graph.nodes[agent_nodes[i]]['commission'])
                             self.agents_graph_account_rank.add_edge(
                                 random_a_node, agent_nodes[i])
+                        elif agent_type == 'C':
+                            sum_confiscation_msc += self.agents_graph_account_rank.graph.nodes[agent_nodes[i]]['commission']
+                            
         ave_email_count = int(email_count / len(agent_nodes))
-        return ave_email_count
+        return ave_email_count, sum_confiscation_msc
 
     def add_relations_normal(self, agent_type, mail_prob, refund_prob):
         a_nodes = [
@@ -144,6 +148,7 @@ class Simulation:
         agent_nodes = [
             node for node in self.agents_graph_normal.graph.nodes if self.agents_graph_normal.graph.nodes[node]['agent_type'] == agent_type]
         email_count = 0
+        sum_confiscation_msc = 0
         for i in range(len(agent_nodes)):
             target_count = self.number_of_emails_sent(agent_type)
             for j in range(target_count):
@@ -161,20 +166,24 @@ class Simulation:
                         email_count += 1
                         # 通貨返金
                         if random.random() < refund_prob:
-                            # ここのnormalグラフの手数料は0になってる(想定通り)
                             self.agents_graph_normal.send_msc(
                                 random_a_node, agent_nodes[i], 0)
                             self.agents_graph_normal.add_edge(
                                 random_a_node, agent_nodes[i])
+                        #返金されないかつスパマーの場合
+                        elif agent_type == 'C':
+                            sum_confiscation_msc += self.agents_graph_normal.graph.nodes[agent_nodes[i]]['commission']
         ave_email_count = int(email_count / len(agent_nodes))
-        return ave_email_count
+        return ave_email_count, sum_confiscation_msc
 
-    def apply_account_rank(self, account_rank):
+    def apply_account_rank(self, account_rank, account_rank_csv):
         # rank score順にソート
         rank_score_data = sorted(account_rank.items(),
                                  key=lambda x: x[1], reverse=True)
         rank_data = {}
         rank = 1
+        
+        self.write_account_rank(account_rank, account_rank_csv)
 
         for i in range(len(rank_score_data)):
             rank_data[rank_score_data[i][0]] = rank
@@ -230,7 +239,6 @@ class Simulation:
                 key, agent_type=value['agent_type'], msc=value['msc'], commission=value['commission'])
         return new_graph
 
-    # ok
     def save_graph_image(self, agents_graph, simulation_type):
         pos = nx.spring_layout(agents_graph)
         plt.figure(figsize=(5, 5))
@@ -254,13 +262,22 @@ class Simulation:
     def set_graph_normal(self, graph):
         self.agents_graph_normal.graph = graph
 
-    def run_init_simulation(self, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C):
+    def write_account_rank(self, account_rank, account_rank_csv):
+        rank_index = 1
+        with open(self.output_folder_path + account_rank_csv, "a") as csvfile:
+            csv_writer = csv.writer(csvfile)
+            for key, value in account_rank.items():
+                csv_writer.writerow([rank_index, key])
+                rank_index += 1
+        print("write account rank csv file")
+    
+    def run_init_simulation(self, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C, account_rank_csv):
         self.create_agents_graph()
         self.add_relations('A', mail_prob_A, refund_prob_A)
         self.add_relations('C', mail_prob_C, refund_prob_C)
         set_socre_agents = self.agents_graph.set_agents_unified_score(
             self.num_agents)
-        account_rank_graph = self.apply_account_rank(set_socre_agents)
+        account_rank_graph = self.apply_account_rank(set_socre_agents, account_rank_csv)
         account_rank = self.calculate_accountrank(
             account_rank_graph, set_socre_agents)
         #cのランクスコアがなぜか高い
@@ -271,20 +288,17 @@ class Simulation:
         account_rank_graph = self.commission_settings_for_each_agent(
             graph, account_rank)
         self.agents_graph_account_rank.graph = account_rank_graph
-        ave_a_email_count = self.add_relations_account_rank(
+        ave_a_email_count, sum_confiscation_msc_rank_a = self.add_relations_account_rank(
             'A', mail_prob_A, refund_prob_A)
-        ave_c_email_count = self.add_relations_account_rank(
+        ave_c_email_count, sum_confiscation_msc_rank_c = self.add_relations_account_rank(
             'C', mail_prob_C, refund_prob_C)
-        # self.save_graph_image(
-        #     self.agents_graph_account_rank.graph, 'account_rank')
-        return self.agents_graph_account_rank.graph, ave_a_email_count, ave_c_email_count
+        return self.agents_graph_account_rank.graph, ave_a_email_count, ave_c_email_count, sum_confiscation_msc_rank_c
 
     def run_simulation_normal(self, graph, mail_prob_A,  mail_prob_C, refund_prob_A, refund_prob_C):
         normal_graph = self.copy_graph_only_nodes(graph)
         self.agents_graph_normal.graph = normal_graph
-        ave_a_email_count = self.add_relations_normal(
+        ave_a_email_count, sum_confiscation_msc_normal_a = self.add_relations_normal(
             'A', mail_prob_A, refund_prob_A)
-        ave_c_email_count = self.add_relations_normal(
+        ave_c_email_count, sum_confiscation_msc_normal_c = self.add_relations_normal(
             'C', mail_prob_C, refund_prob_C)
-        # self.save_graph_image(self.agents_graph_normal.graph, 'normal')
-        return self.agents_graph_normal.graph, ave_a_email_count, ave_c_email_count
+        return self.agents_graph_normal.graph, ave_a_email_count, ave_c_email_count, sum_confiscation_msc_normal_c

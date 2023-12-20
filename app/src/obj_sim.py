@@ -16,7 +16,8 @@ class Agent:
 
 class AgentsGraph:
     def __init__(self):
-        self.graph = nx.Graph()
+        # 空の有向グラフを作成
+        self.graph = nx.DiGraph()
 
     def debug(self):
         print("debug agents graph class")
@@ -42,7 +43,7 @@ class AgentsGraph:
         self.graph.nodes[node_to]['msc'] = self.graph.nodes[node_to]['msc'] + \
             (1 + commission)
 
-    # 全エージェントの初期のランクスコアを設定
+    # 全エージェントの初期のランクスコアを設定(どんな値を取ろうが関係ない)
     def set_agents_unified_score(self, num_agents):
         all_agents_score = {}
         for i in range(int(num_agents * 0.99)):
@@ -176,14 +177,12 @@ class Simulation:
         ave_email_count = int(email_count / len(agent_nodes))
         return ave_email_count, sum_confiscation_msc
 
-    def apply_account_rank(self, account_rank, account_rank_csv):
+    def apply_account_rank(self, account_rank):
         # rank score順にソート
         rank_score_data = sorted(account_rank.items(),
                                  key=lambda x: x[1], reverse=True)
         rank_data = {}
         rank = 1
-        
-        self.write_account_rank(account_rank, account_rank_csv)
 
         for i in range(len(rank_score_data)):
             rank_data[rank_score_data[i][0]] = rank
@@ -203,14 +202,12 @@ class Simulation:
                     value)
         return new_graph
 
-    def calculate_accountrank(self, graph, all_agents_score):
-        return nx.pagerank(graph, alpha=0.85, personalization=all_agents_score)
+    def calculate_account_rank(self, graph, all_agents_score):
+        return nx.account_rank(graph, alpha=0.85, personalization=all_agents_score)
 
     # 手数料をここで設定
     def calculate_email_remittance_fees(self, rank):
-        #return 0.1 * rank
-        #return int(1 / (1 / rank))
-        return min(10, int(1 / (1 / rank)))
+        return min(100, rank)
 
     def commission_settings_for_each_agent(self, graph, account_rank):
         rank_score_data = sorted(account_rank.items(),
@@ -267,21 +264,17 @@ class Simulation:
         with open(self.output_folder_path + account_rank_csv, "a") as csvfile:
             csv_writer = csv.writer(csvfile)
             for key, value in account_rank.items():
-                csv_writer.writerow([rank_index, key])
+                csv_writer.writerow([rank_index, key, value])
                 rank_index += 1
-        print("write account rank csv file")
     
     def run_init_simulation(self, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C, account_rank_csv):
         self.create_agents_graph()
         self.add_relations('A', mail_prob_A, refund_prob_A)
         self.add_relations('C', mail_prob_C, refund_prob_C)
-        set_socre_agents = self.agents_graph.set_agents_unified_score(
-            self.num_agents)
-        account_rank_graph = self.apply_account_rank(set_socre_agents, account_rank_csv)
-        account_rank = self.calculate_accountrank(
-            account_rank_graph, set_socre_agents)
-        #cのランクスコアがなぜか高い
-        #スコア順に表示したい
+        
+        account_rank = nx.pagerank(self.agents_graph.graph, alpha=0.85)
+        account_rank_graph = self.apply_account_rank(account_rank)
+        self.write_account_rank(account_rank, account_rank_csv)
         return account_rank_graph, account_rank
 
     def run_simulation_with_account_rank(self, graph, account_rank, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C):

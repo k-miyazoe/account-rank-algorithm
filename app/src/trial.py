@@ -11,9 +11,9 @@ def main():
     mail_probabilities_A = [1]
     mail_probabilities_C = [1]
     refund_probabilities_A = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
-    refund_probabilities_C = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
-    # refund_probabilities_A = [0.6]
-    # refund_probabilities_C = [0.4]
+    # refund_probabilities_C = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
+    #refund_probabilities_A = [0]
+    refund_probabilities_C = [0.2]
     agent_ratios_A = [0.99]
     agent_ratios_C = [0.01]
 
@@ -48,7 +48,7 @@ def main():
         graph_normal = init_graph
 
         ten_days_simulation_result = [refund_prob_A,refund_prob_C,0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        for j in range(1):
+        for j in range(10):
             graph_rank = init_graph
             graph_normal = init_graph
             sum_confi_msc_rank = 0
@@ -162,17 +162,18 @@ def add_simulation_result(pre_result, a_msc_rank, c_msc_rank,a_msc, c_msc,ave_a_
     return pre_result
 
 
-def divide_simulation_result(result, num):  
-    result[2] = round(result[2] / num, 2)
-    result[3] = round(result[3] / num, 2)
-    result[4] = round(result[4] / num, 2)
-    result[5] = round(result[5] / num, 2)
-    result[6] = result[6] / num
-    result[7] = result[7] / num
-    result[8] = result[8] / num
-    result[9] = result[9] / num
-    result[10] = result[10] / num
-    result[11] = result[11] / num
+def divide_simulation_result(result, num):
+    divide_num = num * 10
+    result[2] = round(result[2] / divide_num, 2)
+    result[3] = round(result[3] / divide_num, 2)
+    result[4] = round(result[4] / divide_num, 2)
+    result[5] = round(result[5] / divide_num, 2)
+    result[6] = result[6] / divide_num
+    result[7] = result[7] / divide_num
+    result[8] = result[8] / divide_num
+    result[9] = result[9] / divide_num
+    result[10] = result[10] / divide_num
+    result[11] = result[11] / divide_num
     return result
 
 if __name__ == "__main__":

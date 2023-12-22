@@ -3,17 +3,19 @@ import datetime
 import os
 import csv
 import itertools
+import time
 
 
 def main():
+    start_time = time.time()
     # 100以下にするとエラーが出る
     num_agents = 1000
     mail_probabilities_A = [1]
     mail_probabilities_C = [1]
-    refund_probabilities_A = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
+    # refund_probabilities_A = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
     # refund_probabilities_C = [0, 0.01, 0.2, 0.4, 0.6, 0.8, 0.99, 1]
-    #refund_probabilities_A = [0]
-    refund_probabilities_C = [0.2]
+    refund_probabilities_A = [0]
+    refund_probabilities_C = [0.1,0.2,0.3]
     agent_ratios_A = [0.99]
     agent_ratios_C = [0.01]
 
@@ -47,40 +49,42 @@ def main():
         graph_rank = init_graph
         graph_normal = init_graph
 
-        ten_days_simulation_result = [refund_prob_A,refund_prob_C,0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+        ten_days_simulation_result = [
+            refund_prob_A, refund_prob_C, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
         for j in range(10):
             graph_rank = init_graph
             graph_normal = init_graph
             sum_confi_msc_rank = 0
             sum_confi_msc_normal = 0
-            
+
             for i in range(ten_days_simulation):
-                graph_rank, ave_a_email_count_a, ave_c_email_count_a, sum_confiscation_msc_rank_c = simulation.run_simulation_with_account_rank(
+                graph_rank, ave_a_email_count_a, ave_c_email_count_a = simulation.run_simulation_with_account_rank(
                     graph_rank, account_rank, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
-                
-                graph_normal, ave_a_email_count_n, ave_c_email_count_n, sum_confiscation_msc_normal_c = simulation.run_simulation_normal(
+
+                graph_normal, ave_a_email_count_n, ave_c_email_count_n = simulation.run_simulation_normal(
                     graph_normal, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C)
-                
+
                 a_msc_rank, c_msc_rank = average_msc(graph_rank)
                 a_msc, c_msc = average_msc(graph_normal)
                 
-                sum_confi_msc_rank += sum_confiscation_msc_rank_c
-                sum_confi_msc_normal += sum_confiscation_msc_normal_c
-                #noramlの没収金額が異様に大きい問題
-                #print("debug noraml", sum_confi_msc_normal)
-            
-                ten_days_simulation_result = add_simulation_result(ten_days_simulation_result, a_msc_rank, c_msc_rank,a_msc, 
-                                                                c_msc,ave_a_email_count_a, ave_c_email_count_a,
-                                                                ave_a_email_count_n, ave_c_email_count_n,
-                                                                sum_confi_msc_rank, sum_confi_msc_normal)
-            
-        ave_simulation_result = divide_simulation_result(ten_days_simulation_result, 10)
+                #途中結果わかるようにcsvの出力のところ書き換えてな〜
+                ten_days_simulation_result = add_simulation_result(ten_days_simulation_result, a_msc_rank, c_msc_rank, a_msc,
+                                                                   c_msc, ave_a_email_count_a, ave_c_email_count_a,
+                                                                   ave_a_email_count_n, ave_c_email_count_n)
+
+        ave_simulation_result = divide_simulation_result(
+            ten_days_simulation_result, 10)
 
         with open(output_folder_path + csv_file_name, 'a') as csvfile:
             writer = csv.writer(csvfile)
             writer.writerow(ave_simulation_result)
-
-
+        end_time = time.time()
+        execution_time = end_time - start_time
+    print(f"開始時間: {start_time}")
+    print(f"終了時間: {end_time}")
+    print(f"実行時間: {execution_time}")
+        
+        
 def create_output_directory():
     now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     folder_path = './output/' + now + '/'
@@ -110,12 +114,11 @@ def create_params_file(num_agents, dir_path, mail_probabilities_A, mail_probabil
 
 
 def create_output_csv(dir_path):
-    csv_header = ["返金確率A", "返金確率C",
-                  "仮想通貨の平均所持量A(rank)", "仮想通貨の平均所持量C(rank)",
-                  "仮想通貨の平均所持量A(normal)", "仮想通貨の平均所持量C(normal)",
-                  "平均メール送信件数A(rank)", "平均メール送信件数C(rank)",
-                  "平均メール送信件数A(normal)", "平均メール送信件数C(normal)",
-                  "没収されたCのmscの合計(rank)", "没収されたCのmscの合計(normal)"]
+    csv_header = ["refond_prod_A", "refond_prod_C",
+                  "ave_msc_A(rank)", "ave_msc_C(rank)",
+                  "ave_msc_A(normal)", "ave_msc_C(normal)",
+                  "ave_email_A(rank)", "ave_email_C(rank)",
+                  "ave_email_A(normal)", "ave_email_C(normal)"]
     execution_time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
 
     output_file_name = f"output_{execution_time}.csv"
@@ -148,7 +151,7 @@ def average_msc(graph):
     return ave_A, ave_C
 
 
-def add_simulation_result(pre_result, a_msc_rank, c_msc_rank,a_msc, c_msc,ave_a_email_count_a, ave_c_email_count_a,ave_a_email_count_n, ave_c_email_count_n, sum_confiscation_msc_rank_c, sum_confiscation_msc_normal_c):
+def add_simulation_result(pre_result, a_msc_rank, c_msc_rank, a_msc, c_msc, ave_a_email_count_a, ave_c_email_count_a, ave_a_email_count_n, ave_c_email_count_n):
     pre_result[2] = pre_result[2] + a_msc_rank
     pre_result[3] = pre_result[3] + c_msc_rank
     pre_result[4] = pre_result[4] + a_msc
@@ -157,8 +160,6 @@ def add_simulation_result(pre_result, a_msc_rank, c_msc_rank,a_msc, c_msc,ave_a_
     pre_result[7] = pre_result[7] + ave_c_email_count_a
     pre_result[8] = pre_result[8] + ave_a_email_count_n
     pre_result[9] = pre_result[9] + ave_c_email_count_n
-    pre_result[10] = pre_result[10] + sum_confiscation_msc_rank_c
-    pre_result[11] = pre_result[11] + sum_confiscation_msc_normal_c
     return pre_result
 
 
@@ -172,9 +173,8 @@ def divide_simulation_result(result, num):
     result[7] = result[7] / divide_num
     result[8] = result[8] / divide_num
     result[9] = result[9] / divide_num
-    result[10] = result[10] / divide_num
-    result[11] = result[11] / divide_num
     return result
+
 
 if __name__ == "__main__":
     main()

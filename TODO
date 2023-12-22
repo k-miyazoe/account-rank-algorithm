@@ -1,29 +1,16 @@
 Todo():
-    ✔ スパマーが一般アカウントからいくら没収されているかの結果を追加出力する @done(23-12-08 14:59)
-    ✔ 小数点以下2桁までと設定する(msc) @now @done(23-12-19 09:09)
-    ☐ ページランクのランクスコアを出力するテストを行う 10,100 @high
-    ☐ cのランクスコアがなぜか高い
-    ☐ スコアが高い順に表示する
-    ☐ なぞに10回のシミュレーションの平均を取れていない
-    ☐ ランクスコアがすべて10のままになっている @high
-    ☐ normalの没収金額総和が多すぎる気がする @high
+    ☐ normalの没収金額総和が多すぎる気がする @low
     ☐ 仮想通貨の価値を考慮した閾値の上げかたを考える @low
     ☐ メーリングリストの結果を追加で出力する @low
     
-#account_rank_graph,self.agents_graphは有向グラフではない
-is_digraph = nx.is_directed(self.agents_graph.graph)
-print(f"有向グラフですか？ {is_digraph}")
-
-#print("debug:self.agents_graph",self.agents_graph.graph.edges)
-# account_rank = self.calculate_account_rank(
-        #     account_rank_graph, set_score_agents)
-        
-        #account_rank_graph = self.apply_account_rank(account_rank)
-        #self.write_account_rank(account_rank, account_rank_csv)
-        #print("debug account_rank", account_rank)
-set_score_agents = self.agents_graph.set_agents_unified_score(
-            self.num_agents)
 Done():
+    ✔ ページランクのランクスコアを出力するテストを行う 10,100 @high @done(23-12-22 10:24)
+    ✔ スパマーが一般アカウントからいくら没収されているかの結果を追加出力する @done(23-12-08 14:59)
+    ✔ 小数点以下2桁までと設定する(msc) @now @done(23-12-19 09:09)
+    ✔ cのランクスコアがなぜか高い @done(23-12-20 14:49)
+    ✔ なぞに10回のシミュレーションの平均を取れていない @done(23-12-20 14:49)
+    ✔ ランクスコアがすべて10のままになっている @high @done(23-12-20 14:49)
+    ✔ スコアが高い順に表示する @done(23-12-22 10:23)
     ✔ このシミュレーションを10回繰り返して、平均値を出力する @high @done(23-12-07 10:04)
     ✔ 失敗させる方法．ページランがないと失敗する境を調査する @low @done(23-12-06 09:03)
     ✔ 1つのcsvファイルに全ての結果をまとめる @high @done(23-12-03 18:12)

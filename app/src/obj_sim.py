@@ -4,10 +4,11 @@ import random
 import datetime
 import os
 import csv
+import numpy as np
 
 
 class Agent:
-    def __init__(self, name, agent_type, msc=1000, commission=0):
+    def __init__(self, name, agent_type, msc=100000, commission=0):
         self.name = name
         self.agent_type = agent_type
         self.msc = msc
@@ -64,6 +65,8 @@ class Simulation:
 
         self.a_agents = int(self.num_agents * a_rate)
         self.c_agents = int(self.num_agents * c_rate)
+        
+        self.random_list = [round(random.uniform(0.01, 1.00), 2) for _ in range(100)]
 
     def create_agents_graph(self):
         for i in range(self.a_agents):
@@ -79,13 +82,20 @@ class Simulation:
         else:
             return True
 
-    def number_of_emails_sent(self,agent_type):
+    def number_of_emails_sent(self, agent_type):
         if (agent_type == 'A'):
             return 15
-        #スパマーが1日にどれくらいメールするかわからない
         elif (agent_type == 'C'):
-            return min(100,self.num_agents * 0.8)
+            return 30
 
+    def random_rate(self, prod):
+        random.shuffle(self.random_list)
+        random_element = self.random_list[0]
+        if prod > random_element:
+            return True
+        else:
+            return False
+    
     def add_relations(self, agent_type, mail_prob, refund_prob):
         a_nodes = [
             node for node in self.agents_graph.graph.nodes if self.agents_graph.graph.nodes[node]['agent_type'] == 'A']
@@ -95,7 +105,9 @@ class Simulation:
         for i in range(len(agent_nodes)):
             target_count = self.number_of_emails_sent(agent_type)
             for j in range(target_count):
+                # if self.random_rate(mail_prob):
                 if random.random() < mail_prob:
+                #if np.random.choice([True, False], p=[mail_prob, 1.0-mail_prob]):
                     send_msc_flag = self.fee_payment(
                         self.agents_graph.graph, agent_nodes[i], self.agents_graph.graph.nodes[agent_nodes[i]]['commission'])
                     if send_msc_flag:
@@ -106,7 +118,9 @@ class Simulation:
                         self.agents_graph.add_edge(
                             agent_nodes[i], random_a_node)
                         email_count += 1
+                        #if self.random_rate(refund_prob):
                         if random.random() < refund_prob:
+                        #if np.random.choice([True, False], p=[refund_prob, 1.0-refund_prob]):
                             self.agents_graph.send_msc(
                                 random_a_node, agent_nodes[i], self.agents_graph.graph.nodes[agent_nodes[i]]['commission'])
                             self.agents_graph.add_edge(
@@ -121,7 +135,9 @@ class Simulation:
         for i in range(len(agent_nodes)):
             target_count = self.number_of_emails_sent(agent_type)
             for j in range(target_count):
+                #if self.random_rate(mail_prob):
                 if random.random() < mail_prob:
+                #if np.random.choice([True, False], p=[mail_prob, 1.0-mail_prob]):
                     send_msc_flag = self.fee_payment(
                         self.agents_graph_account_rank.graph, agent_nodes[i], self.agents_graph_account_rank.graph.nodes[agent_nodes[i]]['commission'])
                     if send_msc_flag:
@@ -132,14 +148,17 @@ class Simulation:
                         self.agents_graph_account_rank.add_edge(
                             agent_nodes[i], random_a_node)
                         email_count += 1
+                        #if np.random.choice([True, False], p=[refund_prob, 1.0-refund_prob]):
+                        #if self.random_rate(refund_prob):
                         if random.random() < refund_prob:
                             self.agents_graph_account_rank.send_msc(
                                 random_a_node, agent_nodes[i], self.agents_graph_account_rank.graph.nodes[agent_nodes[i]]['commission'])
                             self.agents_graph_account_rank.add_edge(
                                 random_a_node, agent_nodes[i])
                         elif agent_type == 'C':
-                            sum_confiscation_msc += self.agents_graph_account_rank.graph.nodes[agent_nodes[i]]['commission']
-                            
+                            sum_confiscation_msc += self.agents_graph_account_rank.graph.nodes[
+                                agent_nodes[i]]['commission']
+
         ave_email_count = int(email_count / len(agent_nodes))
         return ave_email_count, sum_confiscation_msc
 
@@ -153,6 +172,8 @@ class Simulation:
         for i in range(len(agent_nodes)):
             target_count = self.number_of_emails_sent(agent_type)
             for j in range(target_count):
+                #if np.random.choice([True, False], p=[mail_prob, 1.0-mail_prob]):
+                # if self.random_rate(mail_prob):
                 if random.random() < mail_prob:
                     send_msc_flag = self.fee_payment(
                         self.agents_graph_normal.graph, agent_nodes[i], 0)
@@ -166,12 +187,14 @@ class Simulation:
                             agent_nodes[i], random_a_node)
                         email_count += 1
                         # 通貨返金
+                        #if np.random.choice([True, False], p=[refund_prob, 1.0-refund_prob]):
                         if random.random() < refund_prob:
+                        #if self.random_rate(refund_prob):
                             self.agents_graph_normal.send_msc(
                                 random_a_node, agent_nodes[i], 0)
                             self.agents_graph_normal.add_edge(
                                 random_a_node, agent_nodes[i])
-                        #返金されないかつスパマーの場合
+                        # 返金されないかつスパマーの場合
                         elif agent_type == 'C':
                             sum_confiscation_msc += self.agents_graph_normal.graph.nodes[agent_nodes[i]]['commission']
         ave_email_count = int(email_count / len(agent_nodes))
@@ -183,7 +206,6 @@ class Simulation:
                                  key=lambda x: x[1], reverse=True)
         rank_data = {}
         rank = 1
-
         for i in range(len(rank_score_data)):
             rank_data[rank_score_data[i][0]] = rank
             rank += 1
@@ -205,7 +227,6 @@ class Simulation:
     def calculate_account_rank(self, graph, all_agents_score):
         return nx.account_rank(graph, alpha=0.85, personalization=all_agents_score)
 
-    # 手数料をここで設定
     def calculate_email_remittance_fees(self, rank):
         return min(100, rank)
 
@@ -261,20 +282,26 @@ class Simulation:
 
     def write_account_rank(self, account_rank, account_rank_csv):
         rank_index = 1
-        with open(self.output_folder_path + account_rank_csv, "a") as csvfile:
-            csv_writer = csv.writer(csvfile)
-            for key, value in account_rank.items():
-                csv_writer.writerow([rank_index, key, value])
-                rank_index += 1
-    
+        # with open(self.output_folder_path + account_rank_csv, "a") as csvfile:
+        #     csv_writer = csv.writer(csvfile)
+        #     for key, value in account_rank.items():
+        #         csv_writer.writerow([rank_index, key, value])
+        #         rank_index += 1
+                
+        with open(self.output_folder_path + account_rank_csv, mode='a') as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerows(account_rank)
+
+        
     def run_init_simulation(self, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C, account_rank_csv):
         self.create_agents_graph()
         self.add_relations('A', mail_prob_A, refund_prob_A)
         self.add_relations('C', mail_prob_C, refund_prob_C)
-        
         account_rank = nx.pagerank(self.agents_graph.graph, alpha=0.85)
         account_rank_graph = self.apply_account_rank(account_rank)
-        self.write_account_rank(account_rank, account_rank_csv)
+        sorted_account_rank = sorted(account_rank.items(),
+                                 key=lambda x: x[1], reverse=True)
+        self.write_account_rank(sorted_account_rank, account_rank_csv)
         return account_rank_graph, account_rank
 
     def run_simulation_with_account_rank(self, graph, account_rank, mail_prob_A, mail_prob_C, refund_prob_A, refund_prob_C):
@@ -285,7 +312,7 @@ class Simulation:
             'A', mail_prob_A, refund_prob_A)
         ave_c_email_count, sum_confiscation_msc_rank_c = self.add_relations_account_rank(
             'C', mail_prob_C, refund_prob_C)
-        return self.agents_graph_account_rank.graph, ave_a_email_count, ave_c_email_count, sum_confiscation_msc_rank_c
+        return self.agents_graph_account_rank.graph, ave_a_email_count, ave_c_email_count
 
     def run_simulation_normal(self, graph, mail_prob_A,  mail_prob_C, refund_prob_A, refund_prob_C):
         normal_graph = self.copy_graph_only_nodes(graph)
@@ -294,4 +321,4 @@ class Simulation:
             'A', mail_prob_A, refund_prob_A)
         ave_c_email_count, sum_confiscation_msc_normal_c = self.add_relations_normal(
             'C', mail_prob_C, refund_prob_C)
-        return self.agents_graph_normal.graph, ave_a_email_count, ave_c_email_count, sum_confiscation_msc_normal_c
+        return self.agents_graph_normal.graph, ave_a_email_count, ave_c_email_count

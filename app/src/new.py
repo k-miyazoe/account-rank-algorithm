@@ -18,12 +18,10 @@ def main():
     # refund_probabilities_C = [0.1,0.2,0.3]
     agent_ratios_A = [0.99]
     agent_ratios_C = [0.01]
-    simulation_times = 10
-    ten_days_simulation = 10
 
     output_folder_path = create_output_directory()
     create_params_file(num_agents, output_folder_path, mail_probabilities_A, mail_probabilities_C,
-                       refund_probabilities_A,  refund_probabilities_C, agent_ratios_A, agent_ratios_C, simulation_times, ten_days_simulation)
+                       refund_probabilities_A,  refund_probabilities_C, agent_ratios_A, agent_ratios_C)
 
     parameter_combinations = list(itertools.product(mail_probabilities_A, mail_probabilities_C,
                                                     refund_probabilities_A, refund_probabilities_C,
@@ -32,7 +30,7 @@ def main():
     total_combinations = len(parameter_combinations)
     print(f"Total combinations(試行回数): {total_combinations}")
     csv_file_name = create_output_csv(output_folder_path)
-    
+    ten_days_simulation = 10
     now = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     accont_rank_csv = now + "account_rank.csv"
 
@@ -50,10 +48,9 @@ def main():
 
         graph_rank = init_graph
         graph_normal = init_graph
-
-        ten_days_simulation_result = [
-            refund_prob_A, refund_prob_C, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
-        for j in range(simulation_times):
+        
+        execution_time = 1
+        for j in range(execution_time):
             graph_rank = init_graph
             graph_normal = init_graph
             sum_confi_msc_rank = 0
@@ -69,16 +66,12 @@ def main():
                 a_msc_rank, c_msc_rank = average_msc(graph_rank)
                 a_msc, c_msc = average_msc(graph_normal)
                 
-                ten_days_simulation_result = add_simulation_result(ten_days_simulation_result, a_msc_rank, c_msc_rank, a_msc,
-                                                                   c_msc, ave_a_email_count_a, ave_c_email_count_a,
-                                                                   ave_a_email_count_n, ave_c_email_count_n)
-
-        ave_simulation_result = divide_simulation_result(
-            ten_days_simulation_result, 10)
-
-        with open(output_folder_path + csv_file_name, 'a') as csvfile:
-            writer = csv.writer(csvfile)
-            writer.writerow(ave_simulation_result)
+                simulation_result = [refund_prob_A, refund_prob_C, a_msc_rank, c_msc_rank, a_msc, c_msc, ave_a_email_count_a, ave_c_email_count_a, ave_a_email_count_n, ave_c_email_count_n]
+                #途中結果がわかるcsvファイルを作成
+                with open(output_folder_path + csv_file_name, 'a') as csvfile:
+                    writer = csv.writer(csvfile)
+                    writer.writerow(simulation_result)
+                
         end_time = time.time()
         execution_time = end_time - start_time
     print(f"開始時間: {start_time}")
@@ -93,7 +86,7 @@ def create_output_directory():
     return folder_path
 
 
-def create_params_file(num_agents, dir_path, mail_probabilities_A, mail_probabilities_C, refund_probabilities_A, refund_probabilities_C, agent_ratios_A, agent_ratios_C, simulation_times, ten_days_simulation):
+def create_params_file(num_agents, dir_path, mail_probabilities_A, mail_probabilities_C, refund_probabilities_A, refund_probabilities_C, agent_ratios_A, agent_ratios_C):
     with open(dir_path + "params.txt", "w") as file:
         num_agents_text = "エージェントの数："+str(num_agents)+"\n"
         file.write(num_agents_text)
@@ -112,10 +105,6 @@ def create_params_file(num_agents, dir_path, mail_probabilities_A, mail_probabil
             f"- タイプ A エージェント比率: {', '.join(map(str, agent_ratios_A))}\n")
         file.write(
             f"- タイプ C エージェント比率: {', '.join(map(str, agent_ratios_C))}\n")
-        file.write(
-            f"- シミュレーション回数: {', '.join(map(str, agent_ratios_C))}\n")
-        file.write(
-            f"- シミュレーション日数: {', '.join(map(str, agent_ratios_C))}\n")
 
 
 def create_output_csv(dir_path):
@@ -130,6 +119,7 @@ def create_output_csv(dir_path):
     with open(dir_path + output_file_name, 'w') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(csv_header)
+    print(f"Output file name: {output_file_name}")
     return output_file_name
 
 

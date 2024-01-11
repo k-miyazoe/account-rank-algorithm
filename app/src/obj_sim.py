@@ -8,7 +8,7 @@ import numpy as np
 
 
 class Agent:
-    def __init__(self, name, agent_type, msc=100000, commission=0):
+    def __init__(self, name, agent_type, msc=1000, commission=0):
         self.name = name
         self.agent_type = agent_type
         self.msc = msc
@@ -227,8 +227,21 @@ class Simulation:
     def calculate_account_rank(self, graph, all_agents_score):
         return nx.account_rank(graph, alpha=0.85, personalization=all_agents_score)
 
+    #このシステムの核となる部分
     def calculate_email_remittance_fees(self, rank):
-        return min(100, rank)
+        #パターン1上限100の場合
+        # return min(rank,100)
+        #パターン2
+        #return 100*rank/1000
+        #return rank/1000
+        #パターン3
+        return 290*((rank/1000)**5)
+        #return (rank/1000)**5
+        #パターン4
+        #return rank
+        #パターン5
+        #return 100
+        #return 50
 
     def commission_settings_for_each_agent(self, graph, account_rank):
         rank_score_data = sorted(account_rank.items(),
